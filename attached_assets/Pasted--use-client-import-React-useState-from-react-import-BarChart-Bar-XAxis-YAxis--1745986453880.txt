@@ -1,0 +1,309 @@
+"use client";
+import React, { useState } from "react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { PieChart, Pie, Cell, Legend } from "recharts";
+
+// Categories for transactions
+const categories = ["Food", "Transport", "Bills", "Entertainment", "Shopping", "Others"];
+
+interface Transaction {
+  id: number;
+  amount: number;
+  description: string;
+  date: string;
+  category: string;  // Add category to the transaction
+}
+
+const TransactionsPage = () => {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [date, setDate] = useState("");
+  const [category, setCategory] = useState("");
+  const [categoryBudgets, setCategoryBudgets] = useState<{ [key: string]: number }>({});  // Track budgets for each category
+
+  const addTransaction = () => {
+    if (!amount || !description || !date || !category) return;
+    const newTransaction: Transaction = {
+      id: Date.now(),
+      amount: parseFloat(amount),
+      description,
+      date,
+      category,
+    };
+    setTransactions([...transactions, newTransaction]);
+    setAmount("");
+    setDescription("");
+    setDate("");
+    setCategory("");  // Reset the category
+  };
+
+  const deleteTransaction = (id: number) => {
+    setTransactions(transactions.filter((t) => t.id !== id));
+  };
+
+  // Grouping transactions by category for pie chart
+  const categoryData = transactions.reduce((acc: any, curr) => {
+    acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
+    return acc;
+  }, {});
+
+  const chartData = Object.entries(categoryData).map(([category, total]) => ({
+    category,
+    total,
+  }));
+
+  // Summary Data
+  const totalExpenses = transactions.reduce((acc, curr) => acc + curr.amount, 0);
+  const mostUsedCategory = Object.entries(categoryData).reduce((a, b) => (a[1] > b[1] ? a : b), ["", 0])[0];
+
+  // Handle setting monthly budgets for each category
+  const handleBudgetChange = (category: string, budget: string) => {
+    setCategoryBudgets({
+      ...categoryBudgets,
+      [category]: parseFloat(budget),
+    });
+  };
+
+  // Budget vs Actual Comparison Chart
+  const budgetComparisonData = Object.keys(categoryBudgets).map((category) => ({
+    category,
+    budget: categoryBudgets[category],
+    actual: categoryData[category] || 0,
+  }));
+
+  // Spending Insights
+  const getRemainingBudget = (category: string) => {
+    return (categoryBudgets[category] || 0) - (categoryData[category] || 0);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 py-10 px-4 md:px-10">
+      <div className="max-w-5xl mx-auto space-y-6">
+        <h1 className="text-4xl font-bold text-center text-blue-700 mb-6 animate__animated animate__fadeIn">
+          Personal Finance Tracker 💼
+        </h1>
+
+        {/* Dashboard Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="bg-white shadow-xl hover:scale-105 transition-all duration-300 p-4">
+            <CardTitle>Total Expenses</CardTitle>
+            <CardContent className="text-lg font-semibold text-blue-700">
+              ₹{totalExpenses.toFixed(2)}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-xl hover:scale-105 transition-all duration-300 p-4">
+            <CardTitle>Most Used Category</CardTitle>
+            <CardContent className="text-lg font-semibold text-blue-700">
+              {mostUsedCategory || "N/A"}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-xl hover:scale-105 transition-all duration-300 p-4">
+            <CardTitle>Recent Transaction</CardTitle>
+            <CardContent className="text-lg font-semibold text-blue-700">
+              {transactions.length === 0 ? (
+                "No transactions yet."
+              ) : (
+                `${transactions[0].date} - ₹${transactions[0].amount} - ${transactions[0].description}`
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Budget Setup Card */}
+        <Card className="bg-white shadow-xl hover:scale-105 transition-all duration-300 p-4">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-blue-700">Set Monthly Budgets</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {categories.map((cat) => (
+                <div key={cat} className="flex items-center gap-2">
+                  <label className="font-semibold text-blue-700">{cat}</label>
+                  <Input
+                    type="number"
+                    value={categoryBudgets[cat] || ""}
+                    onChange={(e) => handleBudgetChange(cat, e.target.value)}
+                    placeholder="Set budget"
+                    className="hover:ring-2 hover:ring-blue-300 transition-all duration-300"
+                  />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Styled Add Transaction Card */}
+        <Card className="bg-white/80 border border-blue-200 shadow-xl hover:scale-105 transition-all duration-300 p-4">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-blue-700">Add New Transaction</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Input
+                placeholder="Amount"
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="hover:ring-2 hover:ring-blue-300 transition-all duration-300"
+              />
+              <Input
+                placeholder="Description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="hover:ring-2 hover:ring-blue-300 transition-all duration-300"
+              />
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="hover:ring-2 hover:ring-blue-300 transition-all duration-300"
+              />
+              <select
+                className="px-4 py-2 border rounded-md hover:ring-2 hover:ring-blue-300 transition-all duration-300"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option value="">Select Category</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="mt-4">
+              <Button
+                className="w-full md:w-auto hover:bg-blue-500 transition-all duration-300"
+                onClick={addTransaction}
+              >
+                ➕ Add Transaction
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Transaction List */}
+        <Card className="shadow-xl hover:scale-105 transition-all duration-300 p-4">
+          <CardHeader>
+            <CardTitle className="text-blue-700">Transaction History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {transactions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No transactions yet.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {transactions.map((t) => (
+                  <div
+                    key={t.id}
+                    className="flex items-center justify-between border-b py-2 text-sm"
+                  >
+                    <span>
+                      {t.date} - {t.description} - ₹{t.amount} - {t.category}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => deleteTransaction(t.id)}
+                      className="hover:bg-red-500 transition-all duration-300"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Budget vs Actual Comparison Chart */}
+        <Card className="shadow-xl hover:scale-105 transition-all duration-300 p-4">
+          <CardHeader>
+            <CardTitle className="text-blue-700">Budget vs Actual Comparison</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {budgetComparisonData.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No data to show chart.
+              </p>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={budgetComparisonData}>
+                  <XAxis dataKey="category" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar
+                    dataKey="budget"
+                    fill="#0088FE"
+                    label={{ position: "top" }}
+                  />
+                  <Bar
+                    dataKey="actual"
+                    fill="#FF8042"
+                    label={{ position: "top" }}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Category-wise Pie Chart */}
+        <Card className="shadow-xl hover:scale-105 transition-all duration-300 p-4">
+          <CardHeader>
+            <CardTitle className="text-blue-700">Category-wise Expenses</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {chartData.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No data to show chart.
+              </p>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    dataKey="total"
+                    nameKey="category"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius="80%"
+                    label
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#FF0000"][index % 5]}
+                      />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default TransactionsPage;
